@@ -85,7 +85,7 @@ class BookScraper(object):
 
 
 def ArgParser():
-    p = argparse.ArgumentParser(description='TODO')
+    p = argparse.ArgumentParser(description='Scrape book information')
     _a = p.add_argument
     _a('isbn', help='ISBN number to search for')
     return p
