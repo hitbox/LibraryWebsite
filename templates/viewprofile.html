@@ -1,24 +1,86 @@
-{% extends "template.html" %}
-{%  block nav_right %}
-    <a href="/" style="text-decoration: none">Back to Main</a>
-{% endblock %}
-{% block content %}
+{% extends "base.html" %}
 
-  <div class="container">
-    <div class="row">
-      <div class="col-sm-6">
-        <h4 class="staff-name">{{ profile.f_name }} {{ profile.l_name }}</h4>
-        <img class="profile-pic" src="http://loremflickr.com/250/250/1000faces" alt="">
-      </div>
-      <div class="col-sm-6">
-        <!-- <p>{{ profile.bio }}</p> -->
-        <!-- placeholder text until we add bios -->
-        <p class="bio">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-        </p>
-      </div>
+{% set CATEGORY_FILTER_FORM_AUTOSUBMIT = false %}
+
+{% macro categories_filter_form(staff) %}
+<form id="categories-selector-form"
+      action="{{ url_for('profile', uname=staff.username) }}"
+      method="GET">
+    {% for item in staff.category_list %}
+    <div class="checkbox-inline">
+        <input id="category-{{ item }}" type="checkbox" name="category"
+               data-toggle="toggle"
+               data-on="{{ item }}"
+               data-off="{{ item }}"
+               data-size="small"
+               value="{{ item }}"
+               {{ 'checked' if item in selected_categories }}>
+        <label class="fallback-label" for="category-{{ item }}">{{ item }}</label>
     </div>
-  </div>
+    {% endfor %}
+    <button role="button" class="btn btn-secondary" type="submit">Filter</button>
+</form>
+{% endmacro %}
 
+{% macro js_categories_filter_form_init() %}
+<link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='css/bootstrap-toggle.min.css') }}">
+<script src="{{ url_for('static', filename='js/bootstrap-toggle.min.js') }}"></script>
+<script>
+$(function() {
+    var form = $("#categories-selector-form");
+    var checkboxes = form.find("input[type=checkbox]");
+    if (checkboxes) {
+        form.find(".fallback-label").hide();
+
+        {% if CATEGORY_FILTER_FORM_AUTOSUBMIT %}
+        form.find("button[type=submit]").hide();
+
+        checkboxes.change(function() {
+            setTimeout(function() {
+                form.submit();
+            }, 250);
+        });
+        {% endif %}
+    }
+});
+</script>
+{% endmacro %}
+
+{% block head %}
+{{ super() }}
+{{ js_categories_filter_form_init() }}
 {% endblock %}
 
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-sm-6">
+            <h4 class="staff-name">{{ staff.f_name }} {{ staff.l_name }}</h4>
+            <img class="profile-pic" src="http://loremflickr.com/250/250/1000faces" alt="">
+        </div>
+        <div class="col-sm-6">
+            <p class="bio">{{ staff.bio }}</p>
+            <p><a href="http://www.kentonlibrary.org/email-newsletter">Sign up </a>for our monthly reading recommendations.</p>
+            {{ ask_what_read(staff) }}
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <div class="row">
+        <h4>Categories</h4>
+        {{ categories_filter_form(staff) }}
+    </div>
+</div>
+
+<div class="container">
+    <div class="row">
+        {% for RL in readinglist %}
+        <p>
+        <a href="http://catalog.kentonlibrary.org/">
+        <div class="col-md-3"><img src="http://catalog.kentonlibrary.org/opac/extras/ac/jacket/medium/{{ RL.ISBN }}" ></div></a>
+        {% endfor %}
+        </p>
+   </div>
+</div>
+{% endblock %}
