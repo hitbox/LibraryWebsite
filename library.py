@@ -3,11 +3,12 @@ import datetime
 import ast
 import re
 import time
+import os
 
 from random import shuffle
 from functools import wraps
 from flask import Flask, render_template, request, session, \
-     flash, redirect, url_for, g, jsonify
+     flash, redirect, url_for, g, jsonify, abort
 from flask_mail import Mail, Message
 from publisher import Publisher
 from os import environ
@@ -17,9 +18,13 @@ from sqlalchemy import or_, and_
 from database import db_session
 from models import ReadingList, Staff, PatronContact
 
+from upload_form import UploadForm
+from flask.ext.bootstrap import Bootstrap
+
 app = Flask(__name__)
 app.config.from_object(config)
 mail = Mail(app)
+bootstrap = Bootstrap(app)
 
 def login_required(test):
     @wraps(test)
@@ -70,7 +75,7 @@ def logout():
 def main():
     staff = Staff.query.filter(Staff.username != 'admin').all()
     shuffle(staff)
-    return render_template('main.html', staff=staff)
+    return render_template('main.html', staffmembers=staff)
 
 @app.route('/admin')
 @login_required
@@ -78,23 +83,31 @@ def admin():
     if session["logged_in_name"] != "admin":
         flash("You are not authorized to perform this action.")
         return redirect(url_for('main'))
-    return render_template('admin.html', staff=Staff.query.all())
+    return render_template('admin.html', staff=Staff.query.all(), readinglist=ReadingList.query.all(), patron_reqs=PatronContact.query.all())
 
 @app.route('/librarian')
 @app.route('/librarian/<rlid>', methods=['GET', 'POST'])
 @login_required
 def librarian(rlid=None):
     logged_in_user = Staff.query.get(session['logged_in_name'])
+    patron_reqs = PatronContact.query.filter(PatronContact.username==logged_in_user.username, PatronContact.status!='closed')
+    inputs = request.args.get('inputs')
+    if inputs != None: # Prepopulate with entered data
+        inputs = ast.literal_eval(inputs) # Captures any form inputs from url as (takes literal value of string)
     if rlid is None:
-        return render_template('librarian.html', readinglist=logged_in_user.readinglist, existingValues=None)
+        if session["logged_in_name"] == 'admin':
+            return render_template('librarian.html', readinglist=ReadingList.query.all(), existingValues=inputs, patron_reqs=patron_reqs)
+        else:
+            return render_template('librarian.html', readinglist=logged_in_user.readinglist, existingValues=inputs, patron_reqs=patron_reqs)
     else:
         book = ReadingList.query.filter_by(RLID=rlid).first()
-        if book.username == session["logged_in_name"] or session["logged_in_name"] == 'admin':
-            return render_template('librarian.html', readinglist=logged_in_user.readinglist, existingValues=book)
+        if book.username == session["logged_in_name"]:
+            return render_template('librarian.html', readinglist=logged_in_user.readinglist, existingValues=book, patron_reqs=patron_reqs, inputs=inputs)
+        elif session["logged_in_name"] == 'admin':
+            return render_template('librarian.html', readinglist=ReadingList.query.all(), existingValues=book, patron_reqs=patron_reqs, inputs=inputs)
         else:
             flash("Your are not authorized to perform this action.")
-            return redirect(url_for('librarian'))
-
+            return redirect(url_for('librarian'), existingValues=inputs)
 
 @app.route('/adduser', methods=['POST'])
 @login_required
@@ -108,7 +121,7 @@ def adduser():
     l_name = request.form['l_name']
     phone = request.form['phone']
     phone = re.sub(r"\D","",phone) # Remove non-digit characters
-    email = request.form['email']
+    email = request.form['emailaddress']
     if not f_name or not l_name or not phone or not username or not password or not email:
         flash('All fields are required. Please try again.')
         return redirect(url_for('admin'))
@@ -151,20 +164,35 @@ def deleteuser(username):
 @app.route('/addrecread', methods=['POST'])
 @login_required
 def addrecread():
+    if request.method == "POST":  # form was submitted, update database
+        data = {}
+        for key, values in dict(request.form).items():
+            data[key] = ",".join(values)
     if not request.form['book']:
         flash('Book name is required. Please try again.')
-        return redirect(url_for('librarian'))
+        return redirect(url_for('librarian') + '?inputs=' + str(data))
+    if not request.form['ISBN']:
+        flash('ISBN is required. Please try again.')
+        return redirect(url_for('librarian') + '?inputs=' + str(data))
+    if not request.form['author']:
+        flash('Author is required. Please try again.')
+        return redirect(url_for('librarian') + '?inputs=' + str(data))
+    if not request.form['category']:
+        flash('Category is required. Please try again.')
+        return redirect(url_for('librarian') + '?inputs=' + str(data))
 
     if not request.form['RLID']:    # add a new book
         if session['logged_in_name'] == 'admin':
             flash('Your are not authorized to perform this action.')
             return redirect(url_for('admin'))
         book_user = Staff.query.get(session['logged_in_name'])
+        flash('New recommended reading added.')
     else:   # edit a book
         rl = ReadingList.query.get(request.form['RLID'])
         book_user = Staff.query.get(rl.username)
         db_session.delete(rl)
         db_session.commit()
+        flash('Recommended reading edited.')
     ISBN = request.form['ISBN']
     book = request.form['book']
     author = request.form['author']
@@ -182,7 +210,6 @@ def addrecread():
                                              sticky=sticky,
                                              category=category))
     db_session.commit()
-    flash('New recommending reading added.')
     if session['logged_in_name'] == 'admin':
         return redirect(url_for('admin'))
     else:
@@ -293,6 +320,22 @@ def edit_profile(uname):
         flash("Profile updated!")
     return redirect(url_for('edit_profile', uname=uname))
 
+@app.route('/edit-profile/<uname>/upload-picture', methods=['GET', 'POST'])
+@login_required
+def upload_picture(uname):
+    if session["logged_in_name"] != uname and session["logged_in_name"] != 'admin':
+        flash("Access denied: You are not " + uname + ".")
+        return redirect(url_for('main'))
+    staff = Staff.query.get(uname)
+    if staff is None:
+        flash('User %s not found' % uname)
+        return redirect(url_for('main'))
+    image = "uploads/" + uname + ".jpg"
+    form = UploadForm()
+    if request.method == 'POST' and form.validate_on_submit():
+        form.image_file.data.save(os.path.join(app.static_folder, image))
+        return redirect(url_for('edit_profile', uname=uname))
+    return render_template('picture.html', form=form, image=image, staff=staff)
 
 @app.route("/contact/<uname>", methods=['GET', 'POST'])
 def contact(uname):
@@ -372,16 +415,33 @@ def contact(uname):
             msg.body = data['name'] + " has requested to contact " + uname + "\n\nMethod: " + data['contact']
             msg.body += message
             mail.send(msg)
-        patroncontact = PatronContact(reqdate=time.strftime("%Y-%m-%d"), username=uname, **data)
+        patroncontact = PatronContact(reqdate=time.strftime("%Y-%m-%d"), username=uname, status='open', **data)
         db_session.add(patroncontact)
         db_session.commit()
         flash("You're contact request was received!")
     return redirect(url_for('profile', uname=uname))
 
+@app.route("/contact_status/<PCID>", methods=['POST'])
+def contact_status(PCID):
+    contact_req = PatronContact.query.get(PCID)
+    if not contact_req:
+        flash("Patron request not found")
+        return redirect(url_for('librarian'))
+    contact_req.status = request.form['status']
+    db_session.commit()
+    flash(contact_req.name + " Patron request status has been updated")
+    if session['logged_in_name'] == 'admin':
+        return redirect(url_for('admin'))
+    else:
+        return redirect(url_for('librarian'))
+
 @app.route('/publish', methods=['POST'])
 def publish():
-    publish = Publisher('192.168.0.1', "publisher", request.json)
-    return str(publish.in_ip_address_range())
+    ip = request.remote_addr
+    publish = Publisher(ip, "publisher", request.json)
+    if publish.in_ip_address_range():
+        return "Yup"
+    abort(403)
 
 if __name__ == '__main__':
     if environ.get('PORT'):

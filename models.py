@@ -1,6 +1,7 @@
 import argparse
 import datetime
 import os
+import os.path
 
 from sqlalchemy import Boolean, Column, Date, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import backref, relationship
@@ -17,7 +18,7 @@ class Staff(Base):
     phonenumber = Column(String)
     emailaddress = Column(String)
 
-    bio = Column(Text)
+    bio = Column(Text, default='')
     email = Column(Boolean, default=False)
     phone = Column(Boolean, default=True)
     chat = Column(Boolean, default=False)
@@ -33,6 +34,13 @@ class Staff(Base):
     @property 
     def category_list(self):
         return set([item.category for item in self.readinglist])
+
+    def profile_path(self):
+        if os.path.isfile('static/uploads/' + self.username + '.jpg'):
+            pic_file_name = 'uploads/'+ self.username + '.jpg'
+        else: 
+            pic_file_name = 'uploads/anon.jpg'
+        return pic_file_name
 
 class ReadingList(Base):
     __tablename__ = 'readinglist'
@@ -69,7 +77,7 @@ class PatronContact(Base):
     format_pref = Column(Text)
     chat = Column(Text)
     handle = Column(Text)
-    interests = Column(Text)
+    status = Column(Text)
 
     def __getitem__(self, attr):
         return getattr(self, attr)
@@ -87,6 +95,7 @@ def init_models(db_session=None):
                  l_name='Fredderson', phonenumber=2222222222, bio='I am Fred\'s incomplete bio',
                  patron_contacts=[
                      PatronContact(reqdate='2016-01-07',
+                            status='open',
                             name='Joe Johnson',
                             email='jjohanson@bigpimpn.net',
                             contact='phone',

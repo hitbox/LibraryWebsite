@@ -39,7 +39,7 @@ class LibrarySiteTests(unittest.TestCase):
 
     def test_main(self):
         response = self.app.get('/')
-        self.assertIn("Librarian Recommended",response.data)
+        self.assertIn("NextRead",response.data)
     
     def test_login(self):
         #test initial get request
@@ -112,7 +112,7 @@ class LibrarySiteTests(unittest.TestCase):
             f_name="",
             l_name="",
             phone="",
-            email=""),follow_redirects=True)
+            emailaddress=""),follow_redirects=True)
         self.assertIn("All fields are required. Please try again.",response.data)
         response = self.app.post("/adduser",data=dict(
             username="",
@@ -120,7 +120,7 @@ class LibrarySiteTests(unittest.TestCase):
             f_name="t",
             l_name="t",
             phone="",
-            email=""),follow_redirects=True)
+            emailaddress=""),follow_redirects=True)
         self.assertIn("All fields are required. Please try again.",response.data)
         #try with bogus phone number
         response = self.app.post("/adduser",data=dict(
@@ -129,7 +129,7 @@ class LibrarySiteTests(unittest.TestCase):
             f_name="t",
             l_name="t",
             phone="1112222",
-            email="test@testing.com"),follow_redirects=True)
+            emailaddress="test@testing.com"),follow_redirects=True)
         self.assertIn("Phone number must include area code.",response.data)
         #all is well, make sure stored in db
         response = self.app.post("/adduser",data=dict(
@@ -138,7 +138,7 @@ class LibrarySiteTests(unittest.TestCase):
             f_name="t",
             l_name="t",
             phone="1112223333",
-            email="test@testing.com"),follow_redirects=True)
+            emailaddress="test@testing.com"),follow_redirects=True)
         staff=models.Staff.query.filter(and_(models.Staff.username=='t', models.Staff.password=='t', models.Staff.f_name=='t', models.Staff.l_name=='t', models.Staff.phonenumber==1112223333, models.Staff.emailaddress=='test@testing.com')).first()
         self.assertIsNotNone(staff)
         #try adding an existing username
@@ -148,7 +148,7 @@ class LibrarySiteTests(unittest.TestCase):
             f_name="t",
             l_name="t",
             phone="1112223333",
-            email="test2@testing.com"),follow_redirects=True)
+            emailaddress="test2@testing.com"),follow_redirects=True)
         self.assertIn("Username or email address is already used.",response.data)
         #try adding an existing email address
         response = self.app.post("/adduser",data=dict(
@@ -157,7 +157,7 @@ class LibrarySiteTests(unittest.TestCase):
             f_name="u",
             l_name="u",
             phone="1112223333",
-            email="test@testing.com"),follow_redirects=True)
+            emailaddress="test@testing.com"),follow_redirects=True)
         self.assertIn("Username or email address is already used.",response.data)
         #second all is well check with non-digit chars in phone
         response = self.app.post("/adduser",data=dict(
@@ -166,7 +166,7 @@ class LibrarySiteTests(unittest.TestCase):
             f_name="u",
             l_name="u",
             phone="111-222-3333",
-            email="test2@testing.com"),follow_redirects=True)
+            emailaddress="test2@testing.com"),follow_redirects=True)
         staff=models.Staff.query.filter(and_(models.Staff.username=='u', models.Staff.password=='u', models.Staff.f_name=='u', models.Staff.l_name=='u', models.Staff.phonenumber==1112223333, models.Staff.emailaddress=='test2@testing.com')).first()
         self.assertIsNotNone(staff)
 
@@ -272,6 +272,36 @@ class LibrarySiteTests(unittest.TestCase):
             category="t",
             sticky=1), follow_redirects=True)
         self.assertIn("Book name is required.", response.data)
+        # admin EDIT - no ISBN
+        response = self.app.post("/addrecread", data=dict(
+            RLID="1",
+            book="t",
+            author="t",
+            comment="t",
+            ISBN="",
+            category="t",
+            sticky=1), follow_redirects=True)
+        self.assertIn("ISBN is required.", response.data)
+        # admin EDIT - no author
+        response = self.app.post("/addrecread", data=dict(
+            RLID="1",
+            book="t",
+            author="",
+            comment="t",
+            ISBN="t",
+            category="t",
+            sticky=1), follow_redirects=True)
+        self.assertIn("Author is required.", response.data)
+        # admin EDIT - no category
+        response = self.app.post("/addrecread", data=dict(
+            RLID="1",
+            book="t",
+            author="t",
+            comment="t",
+            ISBN="t",
+            category="",
+            sticky=1), follow_redirects=True)
+        self.assertIn("Category is required.", response.data)
         # admin EDIT - with book name
         self.login("admin", "admin")
         response = self.app.post("/addrecread", data=dict(
@@ -302,6 +332,33 @@ class LibrarySiteTests(unittest.TestCase):
             category="t",
             sticky=1), follow_redirects=True)
         self.assertIn("Book name is required.", response.data)
+        # fred ADD - no ISBN
+        response = self.app.post("/addrecread", data=dict(
+            book="t",
+            author="t",
+            comment="t",
+            ISBN="",
+            category="t",
+            sticky=1), follow_redirects=True)
+        self.assertIn("ISBN is required.", response.data)
+        # fred ADD - no author
+        response = self.app.post("/addrecread", data=dict(
+            book="t",
+            author="",
+            comment="t",
+            ISBN="t",
+            category="t",
+            sticky=1), follow_redirects=True)
+        self.assertIn("Author is required.", response.data)
+        # fred ADD - no Cateogry
+        response = self.app.post("/addrecread", data=dict(
+            book="t",
+            author="t",
+            comment="t",
+            ISBN="t",
+            category="",
+            sticky=1), follow_redirects=True)
+        self.assertIn("Category is required.", response.data)
         # fred ADD - with book name
         response = self.app.post("/addrecread", data=dict(
             book="t",
@@ -328,6 +385,36 @@ class LibrarySiteTests(unittest.TestCase):
             category="t",
             sticky=1), follow_redirects=True)
         self.assertIn("Book name is required.", response.data)
+        # fred EDIT - no ISBN name
+        response = self.app.post("/addrecread", data=dict(
+            RLID="1",
+            book="t",
+            author="t",
+            comment="t",
+            ISBN="",
+            category="t",
+            sticky=1), follow_redirects=True)
+        self.assertIn("ISBN is required.", response.data)
+        # fred EDIT - no author
+        response = self.app.post("/addrecread", data=dict(
+            RLID="1",
+            book="t",
+            author="",
+            comment="t",
+            ISBN="t",
+            category="t",
+            sticky=1), follow_redirects=True)
+        self.assertIn("Author is required.", response.data)
+        # fred EDIT - no cateogry
+        response = self.app.post("/addrecread", data=dict(
+            RLID="1",
+            book="t",
+            author="t",
+            comment="t",
+            ISBN="t",
+            category="",
+            sticky=1), follow_redirects=True)
+        self.assertIn("Category is required.", response.data)
         # fred EDIT - with book name
         response = self.app.post("/addrecread", data=dict(
             RLID="1",
@@ -504,7 +591,30 @@ class LibrarySiteTests(unittest.TestCase):
         patroncontact=models.PatronContact.query.filter(and_(models.PatronContact.username=='fred', models.PatronContact.name=='Jeff Johnson', models.PatronContact.email=='test@test.net', models.PatronContact.contact=='email', \
                                                              models.PatronContact.likes=='I like books', models.PatronContact.dislikes=='Sans books', models.PatronContact.comment=='No comment', models.PatronContact.format_pref=='book,eb', models.PatronContact.audience=='adults,children')).first()
         self.assertIsNotNone(patroncontact)
-               
+    
+    def test_edit_patroncontact(self):
+        #test patron contact exists on librarian page
+        self.login("fred", "fred")
+        response = self.app.get("/librarian")
+        self.assertIn("Joe Johnson",response.data) # Test that patron contact request is shown
+        #confirm status can be changed
+        response = self.app.post("/contact_status/1",data=dict(
+            status = 'pending',
+        ), follow_redirects=True)
+        self.assertIn("Joe Johnson Patron request status has been updated",response.data)
+        self.assertIn("2016-01-07",response.data)
+        patroncontact=models.PatronContact.query.filter(and_(models.PatronContact.username=='fred', models.PatronContact.name=='Joe Johnson', models.PatronContact.email=='jjohanson@bigpimpn.net', models.PatronContact.contact=='phone', \
+                                                             models.PatronContact.phone=='5555555555', models.PatronContact.times=='M-Th 12-2 pm', models.PatronContact.status=='pending')).first()
+        self.assertIsNotNone(patroncontact)
+        #confirm closed contact requests are not shown
+        response = self.app.post("/contact_status/1",data=dict(
+            status = 'closed',
+        ), follow_redirects=True)
+        self.assertNotIn("2016-01-07",response.data)
+        patroncontact=models.PatronContact.query.filter(and_(models.PatronContact.username=='fred', models.PatronContact.name=='Joe Johnson', models.PatronContact.email=='jjohanson@bigpimpn.net', models.PatronContact.contact=='phone', \
+                                                             models.PatronContact.phone=='5555555555', models.PatronContact.times=='M-Th 12-2 pm', models.PatronContact.status=='closed')).first()
+        self.assertIsNotNone(patroncontact)
+        
     def test_github_ip_check(self):
         publish = Publisher('192.168.0.1', "dontmatter", "")
         self.assertFalse(publish.in_ip_address_range())

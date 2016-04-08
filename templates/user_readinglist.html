@@ -1,5 +1,8 @@
 <h4>Recommended Readings</h4>
 
+{% from 'macros/core.html' import submit, book_image %}
+{% from 'macros/icons.html' import remove_icon %}
+
 <table class="tablesorter">
     <thead>
         <tr>
@@ -21,7 +24,7 @@
         <tr>
             <td>{{ RL.recdate }}</td>
             <td>{{ RL.ISBN }}</td>
-            <td><img src="http://catalog.kentonlibrary.org/opac/extras/ac/jacket/small/{{ RL.ISBN }}" ></td>
+            <td>{{ book_image(RL, 'small') }}</td>
             <td>{{ RL.book }}</td>
             <td>{{ RL.author }}</td>
             <td>{{ RL.comment }}</td>
@@ -29,17 +32,17 @@
             <td>{{ RL.username }}</td>
             <td>
                 <form action="{{ url_for('changeSticky', rlid=RL.RLID)}}" method="POST">
-                    <input class='btn btn-default' type='submit' value='{{ RL.sticky }}'>
+                    {{ submit(RL.sticky, button_class='default') }}
                 </form>
             </td>
             <td>
                 <form action="{{ url_for('librarian', rlid=RL.RLID)}}" method="POST">
-                    <input class='btn btn-success' type='submit' value='Edit'   >
+                    {{ submit('Edit', button_class='success') }}
                 </form>
             </td>
             <td>
                 <form action="{{ url_for('remrecread', rlid=RL.RLID)}}" method="POST">
-                    <input class='btn btn-danger' type='submit' value='X'   >
+                    {{ submit(remove_icon(), button_class='danger') }}
                 </form>
             </td>
         </tr>
