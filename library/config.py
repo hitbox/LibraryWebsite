@@ -1,26 +1,6 @@
 import os
-import re
 
-def sitename_from_readme():
-    """
-    Return text after hash on first non-blank line, if found, otherwise None.
-    """
-    with open('README.md') as f:
-        for line in f:
-            if not line.strip():
-                continue
-            m = re.match('#(.*)$', line)
-            return m.group(1).strip() if m else None
-
-def splitcamel(s):
-    """
-    Split string s into CamelCase parts.
-    """
-    r = re.findall('[A-Z][^A-Z]+', s)
-    if r:
-        return r
-    else:
-        return [s]
+from utils import sitename_from_readme, splitcamel
 
 class Config(object):
     # configuration
@@ -49,7 +29,7 @@ class TestConfig(Config):
     SQLALCHEMY_DATABASE_URI = "sqlite://"
 
 config = None
-if os.environ.get("LIBRARY_ENV",None) == "test":
+if os.environ.get("LIBRARY_ENV") == "test":
     config = TestConfig()
 else:
     config = Config()

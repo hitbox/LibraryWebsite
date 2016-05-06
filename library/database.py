@@ -52,8 +52,3 @@ class Database(object):
                     self.session.commit()
             self.session.remove()
             return response_or_exc
-
-
-def init_db():
-    import models
-    Base.metadata.create_all(bind=engine)

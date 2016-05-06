@@ -1,6 +1,6 @@
 from sqlalchemy import inspect
 
-from models import *
-from library import *
+from library.models import *
+from library.library import *
 
 app.app_context().push()

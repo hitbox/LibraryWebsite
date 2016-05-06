@@ -541,7 +541,7 @@ def publish():
         return "Yup"
     abort(403)
 
-if __name__ == '__main__':
+def main():
     if environ.get('PORT'):
         port = int(environ.get('PORT'))
     else:
@@ -552,3 +552,6 @@ if __name__ == '__main__':
         host = '127.0.0.1'
 
     app.run(port=port, host=host)
+
+if __name__ == '__main__':
+    main()

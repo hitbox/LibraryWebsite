@@ -1,7 +1,6 @@
 import argparse
 import datetime as dt
 import os
-import sys
 import urllib
 import random
 import string
@@ -219,13 +218,10 @@ def main():
     remove it, if found on the filesystem, and then create it with the database
     structure and initial data.
     """
-    from library import app, db
+    from app import app, db
 
     parser = ArgParser()
     cmdargs = parser.parse_args()
-
-    def raise_unable_to_parse(uri):
-        raise RuntimeError('unable to parse URI: %s' % uri)
 
     def confirm(msg):
         if cmdargs.noconfirm:
@@ -233,12 +229,12 @@ def main():
         return raw_input(msg).lower().startswith('y')
 
     def abort():
-        sys.exit('aborted')
+        parser.exit(message='aborted')
 
     uri = db.engine.url
 
     if 'sqlite' not in db.engine.driver:
-        raise_unable_to_parse(uri)
+        raise RuntimeError('unable to parse URI: %s' % uri)
 
     dbargs = db.engine.url.translate_connect_args()
     path = os.path.abspath(dbargs['database'])
